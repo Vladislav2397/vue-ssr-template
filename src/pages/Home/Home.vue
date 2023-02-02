@@ -1,8 +1,8 @@
-<template>
-    <h1>Index page</h1>
+<template lang="pug">
+h1 Home page
 </template>
 
-<script>
+<script lang="ts">
 import { ref } from 'vue'
 export default {
     name: 'Home',
