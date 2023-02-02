@@ -10,6 +10,6 @@ export const routes = [
     {
         path: '/about',
         name: 'About',
-        component: About,
+        component: () => import('@/pages/About/About.vue'),
     },
 ]
