@@ -1,12 +1,45 @@
 const path = require('path')
 const webpack = require('webpack')
-const ExtractTextPlugin = require('extract-text-webpack-plugin')
+const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const FriendlyErrorsPlugin = require('friendly-errors-webpack-plugin')
 const { VueLoaderPlugin } = require('vue-loader')
-
+const TerserPlugin = require('terser-webpack-plugin')
+const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin')
+// const StyleLintPlugin = require('stylelint-webpack-plugin')
 const isProd = process.env.NODE_ENV === 'production'
+// const ESLintPlugin = require('eslint-webpack-plugin')
+
+const plugins = [new VueLoaderPlugin()]
+
+if (isProd) {
+    plugins.push(
+        // new webpack.optimize.ModuleConcatenationPlugin(),
+        new MiniCssExtractPlugin({
+            filename: '[name].min.[chunkhash].css',
+        })
+    )
+} else {
+    plugins.push(
+        new FriendlyErrorsPlugin()
+        // new ESLintPlugin({
+        //     extensions: ['.vue', '.ts', 'tsx', 'js', 'jsx'],
+        // }),
+        // new StyleLintPlugin({
+        //     files: ['**/*.{vue,htm,html,sss,less,scss,sass}'],
+        //     fix: true,
+        // })
+    )
+}
+
+const scssThemeVars = './src/app/styles/utility/vars/colors.scss'
+const scssResources = [scssThemeVars]
 
 module.exports = {
+    mode: isProd ? 'production' : 'development',
+    entry: {
+        // critical: './resources/app/styles/critical.scss',
+        // main: './resources/app/styles/main.scss'
+    },
     devtool: isProd ? false : '#cheap-module-source-map',
     output: {
         path: path.resolve(__dirname, '../dist'),
@@ -14,14 +47,103 @@ module.exports = {
         filename: '[name].[chunkhash].js',
     },
     resolve: {
-        alias: {
-            public: path.resolve(__dirname, '../public'),
-            '@': path.resolve(__dirname, '../src'),
-        },
+        extensions: ['*', '.js', '.jsx', '.vue', '.ts', '.tsx'],
     },
     module: {
-        noParse: /es6-promise\.js$/, // avoid webpack shimming process
+        noParse: /es6-promise\.js$/,
         rules: [
+            {
+                test: /\.svg$/,
+                loader: 'vue-svg-loader',
+                options: {
+                    svgo: {
+                        plugins: [
+                            { collapseGroups: false },
+                            { removeEmptyContainers: false },
+                            { cleanupIDs: false },
+                            { removeViewBox: false },
+                        ],
+                    },
+                },
+            },
+            {
+                test: /\.css$/,
+                use: ['vue-style-loader', 'css-loader'],
+            },
+            {
+                test: /\.vue$/,
+                loader: 'vue-loader',
+                options: {
+                    loaders: {
+                        ts: 'ts-loader',
+                    },
+                    esModule: true,
+                    compilerOptions: {
+                        preserveWhitespace: false,
+                    },
+                },
+            },
+            {
+                test: /\.(jsx?|tsx?)$/,
+                exclude:
+                    /node_modules\/(?!(twig|twig-drupal-filters|lit-html|lit-element)\/).*/,
+                use: [
+                    'babel-loader',
+                    {
+                        loader: 'ts-loader',
+                        options: {
+                            transpileOnly: true,
+                            appendTsSuffixTo: [/\.vue$/],
+                            appendTsxSuffixTo: [/\.vue$/],
+                        },
+                    },
+                ],
+            },
+            {
+                test: /\.(png|jpg|gif)$/,
+                loader: 'url-loader',
+                options: {
+                    limit: 10000,
+                    name: '[name].[ext]?[hash]',
+                },
+            },
+            {
+                test: /\.scss$/,
+                use: isProd
+                    ? [
+                          MiniCssExtractPlugin.loader,
+                          'css-loader',
+                          {
+                              loader: 'postcss-loader',
+                              options: {
+                                  sourceMap: true,
+                                  config: {
+                                      path: `./build/postcss.config.js`,
+                                  },
+                              },
+                          },
+                          {
+                              loader: 'sass-loader',
+                          },
+                          {
+                              loader: 'sass-resources-loader',
+                              options: {
+                                  resources: scssResources,
+                              },
+                          },
+                      ]
+                    : [
+                          'vue-style-loader',
+                          'css-loader',
+                          'sass-loader',
+                          {
+                              loader: 'sass-resources-loader',
+                              options: {
+                                  resources: scssResources,
+                              },
+                          },
+                      ],
+            },
             {
                 test: /\.pug$/,
                 oneOf: [
@@ -38,63 +160,45 @@ module.exports = {
                             },
                         ],
                     },
+
                     {
                         use: ['raw-loader', 'pug-bem-plain-loader'],
                     },
                 ],
             },
-            {
-                test: /\.vue$/,
-                loader: 'vue-loader',
-            },
-            {
-                test: /\.js$/,
-                loader: 'babel-loader',
-                exclude: /node_modules/,
-            },
-            // {
-            //     test: /\.(jsx?|tsx?)$/,
-            //     exclude: /node_modules/,
-            //     use: ['babel-loader', 'ts-loader'],
-            // },
-            {
-                test: /\.(png|jpg|gif|svg)$/,
-                loader: 'url-loader',
-                options: {
-                    limit: 10000,
-                    name: '[name].[ext]?[hash]',
-                },
-            },
-            {
-                test: /\.styl(us)?$/,
-                use: isProd
-                    ? ExtractTextPlugin.extract({
-                          use: [
-                              {
-                                  loader: 'css-loader',
-                                  options: { minimize: true },
-                              },
-                              'stylus-loader',
-                          ],
-                          fallback: 'vue-style-loader',
-                      })
-                    : ['vue-style-loader', 'css-loader', 'stylus-loader'],
-            },
         ],
     },
     performance: {
-        hints: false,
+        maxEntrypointSize: 300000,
+        hints: isProd ? 'warning' : false,
     },
-    plugins: isProd
-        ? [
-              new VueLoaderPlugin(),
-              new webpack.optimize.UglifyJsPlugin({
-                  compress: { warnings: false },
-              }),
-              new webpack.optimize.ModuleConcatenationPlugin(),
-              new ExtractTextPlugin({
-                  filename: 'common.[chunkhash].css',
-              }),
-          ]
-        : [new VueLoaderPlugin(), new FriendlyErrorsPlugin()],
+    optimization: {
+        minimizer: [
+            new TerserPlugin({
+                cache: true,
+                parallel: true,
+                terserOptions: {
+                    compress: false,
+                    ecma: 6,
+                    mangle: true,
+                },
+                sourceMap: true,
+            }),
+            new OptimizeCSSAssetsPlugin({}),
+        ],
+        splitChunks: {
+            chunks: 'all',
+            cacheGroups: {
+                vueGroup: {
+                    test: /[\\/]node_modules[\\/](vue|es6-promise)[\\/]/,
+                    chunks: 'all',
+                },
+                commons: {
+                    test: /[\\/]node_modules[\\/]/,
+                    chunks: 'all',
+                },
+            },
+        },
+    },
+    plugins,
 }

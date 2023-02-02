@@ -3,7 +3,7 @@
     h1.__text About page
 </template>
 
-<script>
+<script lang="ts">
 export default {
     name: 'About',
 }

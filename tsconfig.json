@@ -4,6 +4,8 @@
         "module": "es2020",
         "lib": ["ES2020", "ES2016", "ES2015", "dom"],
         "moduleResolution": "node",
+        "allowJs": true,
+        //        "types": ["buefy/types"],
         "strict": true,
         "experimentalDecorators": true,
         "allowSyntheticDefaultImports": true,
@@ -15,6 +17,6 @@
         "paths": {
             "@/*": ["src/*"]
         }
-    }
-    // "exclude": ["*.js"]
+    },
+    "exclude": ["*.js"]
 }
