@@ -1,6 +1,6 @@
 import { createApp } from './app'
 
-const { app, router } = createApp()
+const { app, router, store } = createApp()
 
 if (window.__INITIAL_STATE__) {
     // Инициализируем состояние хранилища данными, внедрёнными на сервере
